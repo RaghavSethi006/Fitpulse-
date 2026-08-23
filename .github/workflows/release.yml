@@ -1,0 +1,280 @@
+name: Publish Release & Build APK
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers on semantic version tags like v1.0.0, v2.1.3, etc.
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: 'Release Version Tag (e.g. v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+      release_title:
+        description: 'Release Title'
+        required: false
+        default: 'FitPulse Release'
+      release_notes:
+        description: 'Custom Release Notes / Changelog (Markdown)'
+        required: false
+        default: ''
+      is_prerelease:
+        description: 'Mark as Pre-release?'
+        required: false
+        type: boolean
+        default: false
+      is_draft:
+        description: 'Save as Draft?'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-publish:
+    name: 🚀 Build, Test & Publish Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history so changelog can be generated
+
+      - name: ☕ Set up JDK 17 (Eclipse Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: 🛠️ Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 🏷️ Extract Version Information
+        id: version_info
+        run: |
+          # Determine tag name from push or manual dispatch input
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            RAW_TAG="${{ github.event.inputs.version_tag }}"
+          else
+            RAW_TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          
+          # Clean version name (strip leading 'v' if present for standard numbering)
+          VERSION_NAME="${RAW_TAG#v}"
+          
+          # Derive an integer versionCode based on Semantic Versioning (e.g. 1.2.3 -> 10203)
+          MAJOR=$(echo "$VERSION_NAME" | cut -d. -f1)
+          MINOR=$(echo "$VERSION_NAME" | cut -d. -f2)
+          PATCH=$(echo "$VERSION_NAME" | cut -d. -f3)
+          
+          MAJOR=${MAJOR:-1}
+          MINOR=${MINOR:-0}
+          PATCH=${PATCH:-0}
+          
+          # Integer formula: Major * 10000 + Minor * 100 + Patch
+          VERSION_CODE=$(( MAJOR * 10000 + MINOR * 100 + PATCH ))
+          
+          echo "tag_name=$RAW_TAG" >> $GITHUB_OUTPUT
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "Derived Version Name: $VERSION_NAME (Code: $VERSION_CODE, Tag: $RAW_TAG)"
+
+      - name: 🔐 Configure Environment & Secrets
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          # Inject .env for Secrets Gradle plugin
+          echo "GEMINI_API_KEY=${GEMINI_API_KEY:-""}" > .env
+          
+          # If a custom upload keystore is supplied in GitHub Secrets, decode it
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "Decoding upload release keystore from secrets..."
+            echo "$KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/my-upload-key.jks"
+            echo "KEYSTORE_PATH=$GITHUB_WORKSPACE/my-upload-key.jks" >> $GITHUB_ENV
+            echo "STORE_PASSWORD=$STORE_PASSWORD" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=$KEY_PASSWORD" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${KEY_ALIAS:-upload}" >> $GITHUB_ENV
+          elif [ -f "debug.keystore.base64" ]; then
+            echo "Decoding local debug keystore fallback..."
+            base64 -d debug.keystore.base64 > debug.keystore || true
+          fi
+
+      - name: 🐘 Grant Execute Permission for Gradle
+        run: |
+          if [ -f "gradlew" ]; then
+            chmod +x gradlew
+          fi
+
+      - name: 🧪 Run Unit Tests
+        env:
+          APP_VERSION_NAME: ${{ steps.version_info.outputs.version_name }}
+          APP_VERSION_CODE: ${{ steps.version_info.outputs.version_code }}
+        run: |
+          if [ -f "./gradlew" ]; then
+            ./gradlew testDebugUnitTest --no-daemon --stacktrace
+          else
+            gradle testDebugUnitTest --no-daemon --stacktrace
+          fi
+
+      - name: 📦 Build Release APK & App Bundle
+        env:
+          APP_VERSION_NAME: ${{ steps.version_info.outputs.version_name }}
+          APP_VERSION_CODE: ${{ steps.version_info.outputs.version_code }}
+          KEYSTORE_PATH: ${{ env.KEYSTORE_PATH }}
+          STORE_PASSWORD: ${{ env.STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ env.KEY_ALIAS }}
+        run: |
+          GRADLE_CMD="./gradlew"
+          if [ ! -f "$GRADLE_CMD" ]; then
+            GRADLE_CMD="gradle"
+          fi
+          
+          echo "Building Release APK, Release AAB, and Debug APK..."
+          $GRADLE_CMD :app:assembleRelease :app:bundleRelease :app:assembleDebug --no-daemon --stacktrace
+
+      - name: 📁 Package & Name Release Binaries
+        id: package_binaries
+        run: |
+          TAG="${{ steps.version_info.outputs.tag_name }}"
+          DIST_DIR="$GITHUB_WORKSPACE/distribution"
+          mkdir -p "$DIST_DIR"
+          
+          # Find and copy Release APK
+          RELEASE_APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          if [ -n "$RELEASE_APK" ] && [ -f "$RELEASE_APK" ]; then
+            cp "$RELEASE_APK" "$DIST_DIR/FitPulse-${TAG}.apk"
+            echo "Copied Release APK to FitPulse-${TAG}.apk"
+          fi
+          
+          # Find and copy Android App Bundle (AAB)
+          RELEASE_AAB=$(find app/build/outputs/bundle/release -name "*.aab" | head -n 1)
+          if [ -n "$RELEASE_AAB" ] && [ -f "$RELEASE_AAB" ]; then
+            cp "$RELEASE_AAB" "$DIST_DIR/FitPulse-${TAG}.aab"
+            echo "Copied Release AAB to FitPulse-${TAG}.aab"
+          fi
+          
+          # Find and copy Debug APK (for quick testing)
+          DEBUG_APK=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+          if [ -n "$DEBUG_APK" ] && [ -f "$DEBUG_APK" ]; then
+            cp "$DEBUG_APK" "$DIST_DIR/FitPulse-${TAG}-debug.apk"
+            echo "Copied Debug APK to FitPulse-${TAG}-debug.apk"
+          fi
+          
+          # Generate SHA256 Checksums for security
+          cd "$DIST_DIR"
+          sha256sum * > "FitPulse-${TAG}-checksums.txt" 2>/dev/null || true
+          cd "$GITHUB_WORKSPACE"
+          
+          echo "dist_dir=$DIST_DIR" >> $GITHUB_OUTPUT
+          ls -la "$DIST_DIR"
+
+      - name: 📝 Generate Structured Release Notes
+        id: release_notes
+        run: |
+          TAG="${{ steps.version_info.outputs.tag_name }}"
+          VERSION="${{ steps.version_info.outputs.version_name }}"
+          
+          # Check if manual notes were provided in workflow dispatch
+          MANUAL_NOTES="${{ github.event.inputs.release_notes }}"
+          
+          # Get previous tag for git changelog
+          PREV_TAG=$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H)) by @%an" "$PREV_TAG..$TAG" 2>/dev/null || git log -n 10 --pretty=format:"* %s (%h)")
+          else
+            CHANGELOG=$(git log -n 15 --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H)) by @%an" 2>/dev/null || echo "* Initial Release")
+          fi
+          
+          # Generate Rich Release Markdown
+          cat << 'EOF' > release_body.md
+          ## ⚡ FitPulse Android Release: __TAG_NAME__
+          
+          Welcome to the official release of **FitPulse** — your comprehensive AI-powered fitness, macro nutrition, and workout ecosystem! 🏋️‍♂️🥗
+          
+          ---
+          
+          ### 📲 Direct Downloads
+          | Asset | Description | Format |
+          |:---|:---|:---|
+          | 📦 **[FitPulse-__TAG_NAME__.apk](https://github.com/__REPO__/releases/download/__TAG_NAME__/FitPulse-__TAG_NAME__.apk)** | **Universal Android APK** (Install directly on device) | `.apk` |
+          | 🎁 **[FitPulse-__TAG_NAME__.aab](https://github.com/__REPO__/releases/download/__TAG_NAME__/FitPulse-__TAG_NAME__.aab)** | **Google Play App Bundle** (Optimized for store) | `.aab` |
+          | 🧪 **[FitPulse-__TAG_NAME__-debug.apk](https://github.com/__REPO__/releases/download/__TAG_NAME__/FitPulse-__TAG_NAME__-debug.apk)** | **Debug & Testing Build** (Logs enabled) | `.apk` |
+          | 🔒 **[FitPulse-__TAG_NAME__-checksums.txt](https://github.com/__REPO__/releases/download/__TAG_NAME__/FitPulse-__TAG_NAME__-checksums.txt)** | SHA-256 integrity verification | `.txt` |
+          
+          ---
+          
+          ### 🌟 Key Highlights & Included Features
+          - 📊 **Unified Health Dashboard**: High-contrast calorie sweep arc, macro distribution, and 30-day weight recomposition trend lines.
+          - 🥗 **100+ Food Database & Recipe Architect**: Instant search, custom recipe creator, and multi-meal category logging (Breakfast, Lunch, Dinner, Snacks).
+          - 📸 **AI Food Scanner (Gemini Vision)**: Multimodal plate photo and natural language analysis for automated portion & macro logging.
+          - 🏋️ **Gym Routines & 2D Biomechanical Coach**: Step-by-step workout logging with real-time 2D animated skeleton form guidance on Canvas.
+          - ⏱️ **Auto Rest Interval Timer**: Rest countdown with audible chime alerts and quick adjustment buttons.
+          - 🗣️ **Android TTS Voice Coach**: Audio announcements for upcoming exercises, reps, and encouragement during active sets.
+          - 🥗 **AI Nutritionist & 7-Day Meal Planner**: TDEE/BMR calorie calibration and automated high-protein weekly meal plans.
+          - 💬 **AI Coach Alex**: Persistent sports science conversational assistant.
+          
+          ---
+          
+          ### 🛠️ What's Changed
+          __CHANGELOG__
+          
+          __CUSTOM_NOTES__
+          
+          ---
+          
+          ### 📱 How to Install the APK
+          1. Download the **`FitPulse-__TAG_NAME__.apk`** file onto your Android device.
+          2. Open the downloaded file from your browser downloads or Files app.
+          3. When prompted, enable *"Install from Unknown Sources"* or *"Allow from this source"* for your browser/file manager.
+          4. Tap **Install** and launch FitPulse!
+          
+          > 💡 **Tip**: Enter your Google Gemini API key in the app or secrets panel to enable real-time food plate vision scanning and AI coaching!
+          EOF
+          
+          # Replace placeholders
+          sed -i "s/__TAG_NAME__/$TAG/g" release_body.md
+          sed -i "s|__REPO__|${{ github.repository }}|g" release_body.md
+          
+          # Escape & inject changelog
+          if [ -n "$MANUAL_NOTES" ]; then
+            CUSTOM_BLOCK="### 📌 Release Notes\n$MANUAL_NOTES\n"
+          else
+            CUSTOM_BLOCK=""
+          fi
+          
+          # Output file content preview
+          cat release_body.md
+
+      - name: 🚀 Publish GitHub Release with APK & AAB Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version_info.outputs.tag_name }}
+          name: ${{ github.event.inputs.release_title || format('FitPulse {0}', steps.version_info.outputs.tag_name) }}
+          body_path: release_body.md
+          draft: ${{ github.event.inputs.is_draft || false }}
+          prerelease: ${{ github.event.inputs.is_prerelease || false }}
+          files: |
+            ${{ steps.package_binaries.outputs.dist_dir }}/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 💾 Upload Artifacts to Workflow Run
+        uses: actions/upload-artifact@v4
+        with:
+          name: FitPulse-${{ steps.version_info.outputs.tag_name }}-Binaries
+          path: ${{ steps.package_binaries.outputs.dist_dir }}/*
+          retention-days: 90

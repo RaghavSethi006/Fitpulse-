@@ -17,8 +17,11 @@ android {
     applicationId = "com.aistudio.fitpulse.wqvpt"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    val envVersionCode = System.getenv("APP_VERSION_CODE")?.toIntOrNull() ?: 1
+    val envVersionName = System.getenv("APP_VERSION_NAME") ?: "1.0.0"
+
+    versionCode = envVersionCode
+    versionName = envVersionName
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -27,9 +30,9 @@ android {
     create("release") {
       val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
       storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD")
+      storePassword = System.getenv("STORE_PASSWORD") ?: ""
+      keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
+      keyPassword = System.getenv("KEY_PASSWORD") ?: ""
     }
     create("debugConfig") {
       storeFile = file("${rootDir}/debug.keystore")
@@ -39,12 +42,15 @@ android {
     }
   }
 
+  val releaseKeystoreFile = file(System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks")
+  val isReleaseSigned = releaseKeystoreFile.exists() && !System.getenv("STORE_PASSWORD").isNullOrEmpty()
+
   buildTypes {
     release {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = signingConfigs.getByName("release")
+      signingConfig = if (isReleaseSigned) signingConfigs.getByName("release") else signingConfigs.getByName("debugConfig")
     }
     debug { signingConfig = signingConfigs.getByName("debugConfig") }
   }

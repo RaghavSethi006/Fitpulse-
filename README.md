@@ -30,7 +30,8 @@
 5. [Tech Stack & Dependencies](#-tech-stack--dependencies)
 6. [Project Structure](#-project-structure)
 7. [Environment & API Configuration](#-environment--api-configuration)
-8. [Build & Installation](#-build--installation)
+8. [Automated CI/CD & GitHub Releases](#-automated-cicd--github-releases)
+9. [Build & Installation](#-build--installation)
 
 ---
 
@@ -273,6 +274,84 @@ FitPulse uses Google Gemini for real-time food plate vision, meal planning, and 
      GEMINI_API_KEY=your_actual_gemini_api_key_here
      ```
 3. The Gradle Secrets Plugin automatically injects `BuildConfig.GEMINI_API_KEY` at compile time without exposing sensitive keys in version control.
+
+---
+
+## 🚀 Automated CI/CD & GitHub Releases
+
+FitPulse includes an automated, production-grade **Continuous Integration & Continuous Delivery (CI/CD)** pipeline powered by GitHub Actions. Every release automatically builds, tests, signs, generates changelogs, and publishes downloadable release APKs and App Bundles directly to your GitHub repository's **Releases** tab.
+
+```
+                  ┌──────────────────────────────────────────────┐
+                  │           GITHUB ACTIONS PIPELINE            │
+                  └──────────────────────┬───────────────────────┘
+                                         │
+                 ┌───────────────────────┴───────────────────────┐
+                 │                                               │
+                 ▼                                               ▼
+     ┌───────────────────────┐                       ┌───────────────────────┐
+     │      CI Workflow      │                       │   Release Workflow    │
+     │  (`.github/ci.yml`)   │                       │(`.github/release.yml`)│
+     ├───────────────────────┤                       ├───────────────────────┤
+     │ • Pull Requests       │                       │ • Git Tags (`v*.*.*`) │
+     │ • Commits to `main`   │                       │ • Manual Run (UI)     │
+     │ • Unit Tests & Lint   │                       │ • Auto Semantic Ver   │
+     │ • Debug APK Artifact  │                       │ • Build APK + AAB     │
+     └───────────────────────┘                       │ • SHA256 Checksums    │
+                                                     │ • Publish Release 🚀  │
+                                                     └───────────────────────┘
+```
+
+### 1. Triggering an Automated Release
+
+#### Option A: Via Git Semantic Version Tags (Recommended)
+Pushing any version tag starting with `v` automatically triggers the release workflow:
+```bash
+# 1. Create a version tag
+git tag v1.0.0
+
+# 2. Push the tag to GitHub
+git push origin v1.0.0
+```
+GitHub Actions will immediately:
+1. Extract the version name (`1.0.0`) and calculate the integer version code (`10000`).
+2. Run local unit tests and database verification.
+3. Build **`FitPulse-v1.0.0.apk`** (Universal installable Android APK), **`FitPulse-v1.0.0.aab`** (Google Play Bundle), and **`FitPulse-v1.0.0-debug.apk`**.
+4. Generate SHA-256 integrity checksums (`FitPulse-v1.0.0-checksums.txt`).
+5. Extract commit changes since the previous tag into a formatted changelog.
+6. Publish a official **GitHub Release** with all binaries attached for instant download.
+
+#### Option B: Via GitHub Actions UI (Manual Dispatch)
+1. Go to your GitHub repository and click the **Actions** tab.
+2. Select the **"Publish Release & Build APK"** workflow from the left sidebar.
+3. Click **Run workflow**, enter your desired tag (e.g., `v1.1.0`), custom title, and release notes.
+4. Click **Run workflow**. The APK will be built and published to Releases in ~3 minutes.
+
+---
+
+### 2. GitHub Repository Secrets (Optional Custom Signing & AI Key)
+
+To configure release signing and your Gemini API key in GitHub:
+1. Go to your repository's **Settings** → **Secrets and variables** → **Actions**.
+2. Click **New repository secret** and add the following keys as needed:
+
+| Secret Key | Description | Required? |
+|:---|:---|:---|
+| `GEMINI_API_KEY` | Your Google Gemini API Key for AI features | Optional (falls back to app-level config) |
+| `KEYSTORE_BASE64` | Base64-encoded `.jks` upload signing keystore | Optional (falls back to resilient debug-signed release) |
+| `STORE_PASSWORD` | Keystore password | Optional |
+| `KEY_PASSWORD` | Key alias password | Optional |
+| `KEY_ALIAS` | Key alias name (e.g., `upload` or `fitpulse`) | Optional |
+
+> 💡 **Graceful Fallback**: If `KEYSTORE_BASE64` is not provided in your secrets, the workflow automatically signs the release with an installable key so your published `.apk` can be downloaded and installed immediately on any Android device without errors!
+
+---
+
+### 3. How Users Download and Install the Released APK
+1. Navigate to `https://github.com/<your-username>/<repo-name>/releases`.
+2. Click on the latest release tag (e.g., **`v1.0.0`**).
+3. Under **Assets**, click **`FitPulse-v1.0.0.apk`** to download directly to an Android phone or tablet.
+4. Tap the downloaded APK to install.
 
 ---
 
