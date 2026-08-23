@@ -67,7 +67,13 @@ android {
       isIncludeAndroidResources = true
       isReturnDefaultValues = true
       all {
-        it.jvmArgs("-Djava.awt.headless=true", "-Dfile.encoding=UTF-8")
+        it.jvmArgs(
+          "-Djava.awt.headless=true",
+          "-Dfile.encoding=UTF-8",
+          "-Dsun.java2d.opengl=false",
+          "-Dsun.java2d.d3d=false"
+        )
+        it.systemProperty("java.awt.headless", "true")
       }
     }
   }
