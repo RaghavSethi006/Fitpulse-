@@ -62,7 +62,15 @@ android {
     compose = true
     buildConfig = true
   }
-  testOptions { unitTests { isIncludeAndroidResources = true } }
+  testOptions {
+    unitTests {
+      isIncludeAndroidResources = true
+      isReturnDefaultValues = true
+      all {
+        it.jvmArgs("-Djava.awt.headless=true", "-Dfile.encoding=UTF-8")
+      }
+    }
+  }
   dependenciesInfo {
     includeInApk = false
     includeInBundle = true
