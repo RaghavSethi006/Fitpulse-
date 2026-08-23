@@ -1,0 +1,6 @@
+{
+  "name": "FitPulse",
+  "description": "Comprehensive fitness ecosystem featuring Calorie & Macro tracking with AI food scanner, Gym routine maker with interactive 2D animated guide and voice coach, AI Nutritionist with weekly meal planner, AI Coach, and unified analytics dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
