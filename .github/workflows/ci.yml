@@ -30,12 +30,16 @@ jobs:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
 
-      - name: ☕ Set up JDK 17 (Eclipse Temurin)
+      - name: ☕ Set up JDK 21 (Eclipse Temurin)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'
+          java-version: '21'
+
+      - name: 🐘 Setup Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
 
       - name: 🛠️ Set up Android SDK
         uses: android-actions/setup-android@v3

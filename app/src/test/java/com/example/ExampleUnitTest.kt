@@ -1,6 +1,5 @@
 package com.example
 
-import com.example.data.Entities
 import com.example.data.PrepopulatedData
 import org.junit.Assert.*
 import org.junit.Test
@@ -31,11 +30,11 @@ class ExampleUnitTest {
 
     @Test
     fun `starter routines contain valid exercises`() {
-        val routines = PrepopulatedData.starterRoutines
+        val routines = PrepopulatedData.createInitialRoutines()
         assertTrue("Routines list should not be empty", routines.isNotEmpty())
         for (routine in routines) {
             assertTrue("Routine ${routine.name} must have a name", routine.name.isNotBlank())
-            assertTrue("Routine ${routine.name} duration must be positive", routine.estimatedDurationMinutes > 0)
+            assertTrue("Routine ${routine.name} duration must be positive", routine.targetDurationMinutes > 0)
         }
     }
 }
