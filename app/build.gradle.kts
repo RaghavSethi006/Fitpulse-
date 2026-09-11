@@ -48,31 +48,33 @@ android {
     }
   }
 
+  val rawKeystorePath = System.getenv("KEYSTORE_PATH")?.trim()?.takeIf { it.isNotEmpty() } ?: "${rootDir}/my-upload-key.jks"
+  val releaseKeystoreFile = file(rawKeystorePath)
+  val rawStorePassword = System.getenv("STORE_PASSWORD")?.trim()?.takeIf { it.isNotEmpty() }
+  val isReleaseSigned = releaseKeystoreFile.exists() && rawStorePassword != null
+  val defaultDebugKeystore = file("${rootDir}/debug.keystore")
+  val userHomeDebugKeystore = file("${System.getProperty("user.home")}/.android/debug.keystore")
+  val activeDebugKeystore = when {
+    defaultDebugKeystore.exists() -> defaultDebugKeystore
+    userHomeDebugKeystore.exists() -> userHomeDebugKeystore
+    else -> defaultDebugKeystore
+  }
+  val hasDebugKeystore = defaultDebugKeystore.exists() || userHomeDebugKeystore.exists()
+
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD") ?: ""
-      keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
-      keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+      storeFile = if (isReleaseSigned) releaseKeystoreFile else activeDebugKeystore
+      storePassword = rawStorePassword ?: "android"
+      keyAlias = System.getenv("KEY_ALIAS")?.trim()?.takeIf { it.isNotEmpty() } ?: (if (isReleaseSigned) "upload" else "androiddebugkey")
+      keyPassword = System.getenv("KEY_PASSWORD")?.trim()?.takeIf { it.isNotEmpty() } ?: (rawStorePassword ?: "android")
     }
     create("debugConfig") {
-      val defaultKeystore = file("${rootDir}/debug.keystore")
-      val userHomeKeystore = file("${System.getProperty("user.home")}/.android/debug.keystore")
-      storeFile = when {
-        defaultKeystore.exists() -> defaultKeystore
-        userHomeKeystore.exists() -> userHomeKeystore
-        else -> defaultKeystore
-      }
+      storeFile = activeDebugKeystore
       storePassword = "android"
       keyAlias = "androiddebugkey"
       keyPassword = "android"
     }
   }
-
-  val releaseKeystoreFile = file(System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks")
-  val isReleaseSigned = releaseKeystoreFile.exists() && !System.getenv("STORE_PASSWORD").isNullOrEmpty()
-  val hasDebugKeystore = file("${rootDir}/debug.keystore").exists() || file("${System.getProperty("user.home")}/.android/debug.keystore").exists()
 
   buildTypes {
     release {
