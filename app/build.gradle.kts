@@ -1,4 +1,5 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import java.util.Base64
 
 // Ensure .env has valid non-empty values so Secrets Gradle Plugin never generates invalid Java syntax in BuildConfig
 val rootEnvFile = rootProject.file(".env")
@@ -35,6 +36,18 @@ android {
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
+  val debugKeystoreFile = file("${rootDir}/debug.keystore")
+  if (!debugKeystoreFile.exists()) {
+    val base64KeystoreFile = file("${rootDir}/debug.keystore.base64")
+    if (base64KeystoreFile.exists()) {
+      try {
+        val cleanBase64 = base64KeystoreFile.readText().replace("\\s".toRegex(), "")
+        val bytes = Base64.getDecoder().decode(cleanBase64)
+        debugKeystoreFile.writeBytes(bytes)
+      } catch (_: Exception) {}
+    }
+  }
+
   signingConfigs {
     create("release") {
       val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
@@ -44,7 +57,13 @@ android {
       keyPassword = System.getenv("KEY_PASSWORD") ?: ""
     }
     create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
+      val defaultKeystore = file("${rootDir}/debug.keystore")
+      val userHomeKeystore = file("${System.getProperty("user.home")}/.android/debug.keystore")
+      storeFile = when {
+        defaultKeystore.exists() -> defaultKeystore
+        userHomeKeystore.exists() -> userHomeKeystore
+        else -> defaultKeystore
+      }
       storePassword = "android"
       keyAlias = "androiddebugkey"
       keyPassword = "android"
@@ -53,15 +72,22 @@ android {
 
   val releaseKeystoreFile = file(System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks")
   val isReleaseSigned = releaseKeystoreFile.exists() && !System.getenv("STORE_PASSWORD").isNullOrEmpty()
+  val hasDebugKeystore = file("${rootDir}/debug.keystore").exists() || file("${System.getProperty("user.home")}/.android/debug.keystore").exists()
 
   buildTypes {
     release {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = if (isReleaseSigned) signingConfigs.getByName("release") else signingConfigs.getByName("debugConfig")
+      signingConfig = when {
+        isReleaseSigned -> signingConfigs.getByName("release")
+        hasDebugKeystore -> signingConfigs.getByName("debugConfig")
+        else -> null
+      }
     }
-    debug { signingConfig = signingConfigs.getByName("debugConfig") }
+    debug {
+      signingConfig = if (hasDebugKeystore) signingConfigs.getByName("debugConfig") else null
+    }
   }
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
