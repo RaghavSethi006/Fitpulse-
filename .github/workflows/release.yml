@@ -253,13 +253,6 @@ jobs:
           
           ---
           
-          ### 🛠️ What's Changed
-          __CHANGELOG__
-          
-          __CUSTOM_NOTES__
-          
-          ---
-          
           ### 📱 How to Install the APK
           1. Download the **`FitPulse-__TAG_NAME__.apk`** file onto your Android device.
           2. Open the downloaded file from your browser downloads or Files app.
@@ -273,23 +266,16 @@ jobs:
           sed -i "s/__TAG_NAME__/$TAG/g" release_body.md
           sed -i "s|__REPO__|${{ github.repository }}|g" release_body.md
           
-          # Inject changelog and custom notes safely
-          python3 -c "
-with open('release_body.md', 'r') as f:
-    content = f.read()
-
-changelog = '''$CHANGELOG'''
-custom_notes = '''$MANUAL_NOTES'''
-custom_block = f'### 📌 Release Notes\n{custom_notes}\n' if custom_notes.strip() else ''
-
-content = content.replace('__CHANGELOG__', changelog)
-content = content.replace('__CUSTOM_NOTES__', custom_block)
-
-with open('release_body.md', 'w') as f:
-    f.write(content)
-"
+          # Append notes and changelog cleanly
+          if [ -n "$MANUAL_NOTES" ]; then
+            printf "\n---\n\n### 📌 Release Notes\n%s\n" "$MANUAL_NOTES" >> release_body.md
+          fi
           
-          # Output file content preview
+          if [ -n "$CHANGELOG" ]; then
+            printf "\n---\n\n### 🛠️ What's Changed\n%s\n" "$CHANGELOG" >> release_body.md
+          fi
+          
+          # Output file preview
           cat release_body.md
 
       - name: 🚀 Publish GitHub Release with APK & AAB Assets
