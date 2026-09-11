@@ -6,12 +6,35 @@
 [![Persistence](https://img.shields.io/badge/Database-Room%20(SQLite)-4285F4?logo=sqlite&logoColor=white)](#)
 [![Design](https://img.shields.io/badge/Design%20System-Material%203%20Immersive%20Dark-FF6F00?logo=materialdesign&logoColor=white)](#)
 
+<p align="center">
+  <img src="docs/screenshots/hero_showcase.jpg" alt="FitPulse App Showcase" width="100%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);" />
+</p>
+
+---
+
+## 📱 App Experience & Visual Gallery
+
+<div align="center">
+
+| 📊 Health Dashboard | 🏋️ Biomechanical Workout Guide |
+| :---: | :---: |
+| <img src="docs/screenshots/dashboard.jpg" alt="FitPulse Analytics Dashboard" width="340px" style="border-radius: 10px;" /> | <img src="docs/screenshots/workout.jpg" alt="Live Workout Session & 2D Guide" width="340px" style="border-radius: 10px;" /> |
+| **Real-time Calorie Rings & Recomp Trends** | **2D Animated Exercise Coach & Rest Timer** |
+
+| 📸 AI Vision Food Scanner | 🥗 7-Day AI Meal Architecture |
+| :---: | :---: |
+| <img src="docs/screenshots/scanner.jpg" alt="Multimodal Gemini Food Plate Scanner" width="340px" style="border-radius: 10px;" /> | <img src="docs/screenshots/planner.jpg" alt="AI Nutritionist & Meal Planner" width="340px" style="border-radius: 10px;" /> |
+| **Instant Plate Portion & Macro Extraction** | **TDEE Calibrated Daily Meal Schedules** |
+
+</div>
+
 ---
 
 ## 📖 Table of Contents
 
 1. [Overview](#-overview)
-2. [Key Feature Modules](#-key-feature-modules)
+2. [Visual Gallery](#-app-experience--visual-gallery)
+3. [Key Feature Modules](#-key-feature-modules)
    - [Unified Analytics Dashboard](#1-unified-analytics-dashboard)
    - [Nutrition Tracker & Food Engine](#2-nutrition-tracker--food-engine)
    - [AI Smart Food Scanner (Gemini Vision)](#3-ai-smart-food-scanner-gemini-vision)
@@ -20,18 +43,18 @@
    - [Android TTS Voice Coach](#6-android-tts-voice-coach)
    - [AI Nutritionist & Weekly Meal Planner](#7-ai-nutritionist--weekly-meal-planner)
    - [AI Coach Alex (Conversational Assistant)](#8-ai-coach-alex-conversational-assistant)
-3. [Architecture & Design System](#-architecture--design-system)
+4. [Architecture & Design System](#-architecture--design-system)
    - [MVVM + Repository Pattern](#mvvm--repository-pattern)
    - [Dark Immersive Aesthetic & Theme Tokens](#dark-immersive-aesthetic--theme-tokens)
    - [Canvas Graphics & Dynamic Visualizations](#canvas-graphics--dynamic-visualizations)
-4. [Database & Local Persistence](#-database--local-persistence)
+5. [Database & Local Persistence](#-database--local-persistence)
    - [Room Schema & Entities](#room-schema--entities)
    - [Pre-Seeded 30-Day Simulation Dataset](#pre-seeded-30-day-simulation-dataset)
-5. [Tech Stack & Dependencies](#-tech-stack--dependencies)
-6. [Project Structure](#-project-structure)
-7. [Environment & API Configuration](#-environment--api-configuration)
-8. [Automated CI/CD & GitHub Releases](#-automated-cicd--github-releases)
-9. [Build & Installation](#-build--installation)
+6. [Tech Stack & Dependencies](#-tech-stack--dependencies)
+7. [Project Structure](#-project-structure)
+8. [Environment & API Configuration](#-environment--api-configuration)
+9. [Automated CI/CD & GitHub Releases](#-automated-cicd--github-releases)
+10. [Build & Installation](#-build--installation)
 
 ---
 
@@ -61,11 +84,17 @@ Whether logging daily macros, executing high-intensity gym splits with interacti
 ```
 
 ### 1. Unified Analytics Dashboard
+<p align="center">
+  <img src="docs/screenshots/dashboard.jpg" alt="FitPulse Analytics Dashboard" width="280px" style="border-radius: 8px; float: right; margin-left: 20px;" />
+</p>
+
 - **Circular Calorie & Macro Gauges**: Displays live calorie balance (Consumed vs. Burned vs. Net Goal) with custom gradient sweeps and individual progress cards for Protein, Carbs, and Fats.
 - **30-Day Weight Trend Analytics**: Interactive line chart plotting historical body weight check-ins against target milestones with dynamic min/max scaling.
 - **7-Day Calorie Intake Bar Chart**: Visualizes weekly intake trends with target goal threshold lines and day-by-day status indicators.
 - **One-Tap Quick Actions**: Instant access to Log Food, Scan Plate, Start Routine, and Hydration logging (+250ml / +500ml / Reset).
 - **Workout Streak & Activity Feed**: Real-time display of weekly workout consistency, total volume lifted (kg), and active training minutes.
+
+<br clear="both"/>
 
 ### 2. Nutrition Tracker & Food Engine
 - **Pre-Loaded Nutritional Library**: Over 100+ verified foods, whole ingredients, and staple brands categorized by Protein, Carbs & Grains, Dairy & Eggs, Fruits & Veggies, Fats, Snacks, and Meals.
@@ -74,9 +103,15 @@ Whether logging daily macros, executing high-intensity gym splits with interacti
 - **Meal Categorization**: Log entries into structured categories: **Breakfast**, **Lunch**, **Dinner**, and **Snacks**, with per-meal calorie totals and item-level deletion.
 
 ### 3. AI Smart Food Scanner (Gemini Vision)
+<p align="center">
+  <img src="docs/screenshots/scanner.jpg" alt="Multimodal Gemini Food Scanner" width="280px" style="border-radius: 8px; float: right; margin-left: 20px;" />
+</p>
+
 - **Multimodal Nutrition Analysis**: Powered by Gemini (`gemini-2.5-flash`), allows users to snap/upload meal photos or type complex natural language descriptions (e.g., *"Grilled ribeye steak 200g with mashed sweet potatoes and asparagus"*).
 - **Structured Macro Extraction**: Parses estimated portions, calories, protein, carbohydrates, fats, dietary fiber, and ingredient lists into a confirmable log sheet.
 - **Single-Tap Log & Allocate**: Review AI estimates and immediately log to any meal category in the user's daily journal.
+
+<br clear="both"/>
 
 ### 4. Gym Routine Hub & Split Architect
 - **Curated Pre-Loaded Splits**:
@@ -88,19 +123,31 @@ Whether logging daily macros, executing high-intensity gym splits with interacti
 - **Exercise Library**: 50+ compound and isolation exercises with muscle group tags, equipment requirements, and technique cues.
 
 ### 5. Active Workout Session & 2D Animated Guide
+<p align="center">
+  <img src="docs/screenshots/workout.jpg" alt="Active Workout Session" width="280px" style="border-radius: 8px; float: right; margin-left: 20px;" />
+</p>
+
 - **Live Interactive Workout Mode**: Step-by-step exercise execution view with set-by-set completion checkboxes, reps, and load tracking.
 - **Interactive 2D Skeletal Animation**: Custom Jetpack Compose `Canvas` rendering continuous 2D biomechanical motion loops for each exercise (e.g., Bench Press barbell descent/press, Squat hip hinge/knee bend, Pull-up ascent/descent, Deadlift bar path).
 - **Automated Rest Countdown Timer**: Configurable rest interval timer with visual circular countdown, audio alerts, and skip/add 30s controls.
 - **Workout Summary & Auto-Logging**: Calculates total training duration, total volume lifted ($\text{kg} = \text{sets} \times \text{reps} \times \text{weight}$), and estimated calories burned, archiving to workout history.
+
+<br clear="both"/>
 
 ### 6. Android TTS Voice Coach
 - **On-Device Speech Synthesis**: Integrated with `android.speech.tts.TextToSpeech`.
 - **Audio Coaching Cues**: Announces upcoming sets, rep targets, rest timer completions, form reminders, and motivational feedback throughout the active workout session without requiring the user to look at the screen.
 
 ### 7. AI Nutritionist & Weekly Meal Planner
+<p align="center">
+  <img src="docs/screenshots/planner.jpg" alt="AI Nutritionist & Meal Planner" width="280px" style="border-radius: 8px; float: right; margin-left: 20px;" />
+</p>
+
 - **TDEE & Macro Target Calibration**: Calculates Basal Metabolic Rate (Mifflin-St Jeor formula) and Total Daily Energy Expenditure based on user gender, age, height, weight, activity level, and primary fitness goal (**Cut / Fat Loss**, **Maintain / Recomp**, **Clean Bulk**).
 - **7-Day Meal Plan Generator**: Gemini AI generates structured, culturally adaptable, high-protein daily meal schedules (Breakfast, Lunch, Dinner, Snack) calibrated to exact target macros.
 - **Single-Tap Adoption**: Save AI meal plans directly to the local Room database or adopt individual recipes directly into the food log.
+
+<br clear="both"/>
 
 ### 8. AI Coach Alex (Conversational Assistant)
 - **Domain-Specific Sports Science AI**: Built-in conversational fitness coach with deep understanding of progressive overload, nutrient timing, hypertrophy volume, recovery protocols, and supplement safety.
