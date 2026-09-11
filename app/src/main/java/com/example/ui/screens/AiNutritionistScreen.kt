@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.WeeklyMealPlanItem
+import com.example.ui.components.GeminiApiKeyDialog
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.FitnessViewModel
 
@@ -31,10 +32,19 @@ fun AiNutritionistScreen(viewModel: FitnessViewModel) {
     val isGenerating by viewModel.isGeneratingMealPlan.collectAsState()
     val nutritionistMessage by viewModel.nutritionistMessage.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
+    val hasActiveKey by viewModel.hasActiveGeminiKey.collectAsState()
 
     val daysOfWeek = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
     var selectedDay by remember { mutableStateOf("Monday") }
     var showGenerateDialog by remember { mutableStateOf(false) }
+    var showApiKeyDialog by remember { mutableStateOf(false) }
+
+    if (showApiKeyDialog) {
+        GeminiApiKeyDialog(
+            viewModel = viewModel,
+            onDismiss = { showApiKeyDialog = false }
+        )
+    }
 
     val dayMeals = remember(weeklyPlan, selectedDay) {
         weeklyPlan.filter { it.dayOfWeek.equals(selectedDay, ignoreCase = true) }
@@ -76,19 +86,80 @@ fun AiNutritionistScreen(viewModel: FitnessViewModel) {
                 )
             }
 
-            Button(
-                onClick = { showGenerateDialog = true },
-                enabled = !isGenerating,
-                colors = ButtonDefaults.buttonColors(containerColor = BlueVibrant),
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.testTag("generate_ai_meal_plan_button")
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (isGenerating) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
-                } else {
-                    Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = "Generate", tint = Color.White, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Re-plan", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                IconButton(
+                    onClick = { showApiKeyDialog = true },
+                    modifier = Modifier.testTag("ai_nutritionist_api_key_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.VpnKey,
+                        contentDescription = "Configure Gemini API Key",
+                        tint = if (hasActiveKey) GreenAccent else EnergeticOrange
+                    )
+                }
+
+                Button(
+                    onClick = { showGenerateDialog = true },
+                    enabled = !isGenerating,
+                    colors = ButtonDefaults.buttonColors(containerColor = BlueVibrant),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.testTag("generate_ai_meal_plan_button")
+                ) {
+                    if (isGenerating) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+                    } else {
+                        Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = "Generate", tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Re-plan", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+
+        if (!hasActiveKey) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = EnergeticOrange.copy(alpha = 0.12f)),
+                border = BorderStroke(1.dp, EnergeticOrange.copy(alpha = 0.35f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showApiKeyDialog = true }
+                    .testTag("nutritionist_key_missing_banner")
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Key,
+                        contentDescription = null,
+                        tint = EnergeticOrange,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Gemini API Key Required for AI Meal Planning",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = EnergeticOrange
+                        )
+                        Text(
+                            text = "Tap to set up your personal Google Gemini API key.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SlateTextSecondary
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = EnergeticOrange,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
         }

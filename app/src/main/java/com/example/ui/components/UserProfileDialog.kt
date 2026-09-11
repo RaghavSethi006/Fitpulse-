@@ -21,14 +21,26 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.data.UserProfile
 import com.example.ui.theme.*
+import com.example.ui.viewmodel.FitnessViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserProfileDialog(
     currentProfile: UserProfile,
+    viewModel: FitnessViewModel? = null,
     onSaveProfile: (UserProfile) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var showApiKeyDialog by remember { mutableStateOf(false) }
+    val hasActiveKey = viewModel?.hasActiveGeminiKey?.collectAsState()?.value ?: false
+
+    if (showApiKeyDialog && viewModel != null) {
+        GeminiApiKeyDialog(
+            viewModel = viewModel,
+            onDismiss = { showApiKeyDialog = false }
+        )
+    }
+
     var name by remember { mutableStateOf(currentProfile.name) }
     var ageText by remember { mutableStateOf(currentProfile.age.toString()) }
     var gender by remember { mutableStateOf(currentProfile.gender) }
@@ -313,6 +325,61 @@ fun UserProfileDialog(
                                 unfocusedTextColor = SlateTextPrimary
                             )
                         )
+                    }
+
+                    // Gemini AI API Key Settings
+                    if (viewModel != null) {
+                        item {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("AI Intelligence:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = SlateTextPrimary)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = ImmersiveCardInner,
+                                border = BorderStroke(1.dp, ImmersiveBorderSubtle),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showApiKeyDialog = true }
+                                    .testTag("profile_gemini_api_key_tile")
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.VpnKey,
+                                            contentDescription = null,
+                                            tint = BlueLight,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Column {
+                                            Text(
+                                                text = "Google Gemini API Key",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = SlateTextPrimary
+                                            )
+                                            Text(
+                                                text = if (hasActiveKey) "Configured & Active" else "Tap to configure your personal key",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = if (hasActiveKey) GreenAccent else EnergeticOrange
+                                            )
+                                        }
+                                    }
+                                    Icon(
+                                        imageVector = Icons.Default.ChevronRight,
+                                        contentDescription = null,
+                                        tint = SlateTextMuted,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     // Auto-calculate macros button

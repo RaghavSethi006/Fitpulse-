@@ -99,10 +99,14 @@ object GeminiClient {
             .create(GeminiApi::class.java)
     }
 
-    suspend fun generateText(prompt: String, systemInstruction: String? = null): Result<String> = withContext(Dispatchers.IO) {
-        val apiKey = BuildConfig.GEMINI_API_KEY
+    suspend fun generateText(
+        prompt: String,
+        systemInstruction: String? = null,
+        apiKeyOverride: String? = null
+    ): Result<String> = withContext(Dispatchers.IO) {
+        val apiKey = apiKeyOverride?.trim()?.takeIf { it.isNotBlank() } ?: BuildConfig.GEMINI_API_KEY
         if (apiKey.isBlank() || apiKey == "MY_GEMINI_API_KEY") {
-            return@withContext Result.failure(Exception("Gemini API key is not configured. Please set your key in AI Studio Secrets panel."))
+            return@withContext Result.failure(Exception("Gemini API key is not configured. Please enter your Gemini API key in settings."))
         }
 
         val parts = listOf(GeminiPart(text = prompt))
@@ -125,14 +129,24 @@ object GeminiClient {
                 Result.failure(Exception("Empty response from AI"))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            val msg = when {
+                e.message?.contains("400") == true -> "Invalid request or API key format."
+                e.message?.contains("403") == true -> "API key is unauthorized or quota exceeded. Check your Gemini API key."
+                e.message?.contains("404") == true -> "Gemini model endpoint not found."
+                else -> e.message ?: "Failed to connect to Gemini API"
+            }
+            Result.failure(Exception(msg, e))
         }
     }
 
-    suspend fun analyzeImage(bitmap: Bitmap, prompt: String): Result<String> = withContext(Dispatchers.IO) {
-        val apiKey = BuildConfig.GEMINI_API_KEY
+    suspend fun analyzeImage(
+        bitmap: Bitmap,
+        prompt: String,
+        apiKeyOverride: String? = null
+    ): Result<String> = withContext(Dispatchers.IO) {
+        val apiKey = apiKeyOverride?.trim()?.takeIf { it.isNotBlank() } ?: BuildConfig.GEMINI_API_KEY
         if (apiKey.isBlank() || apiKey == "MY_GEMINI_API_KEY") {
-            return@withContext Result.failure(Exception("Gemini API key is not configured."))
+            return@withContext Result.failure(Exception("Gemini API key is not configured. Please enter your Gemini API key in settings."))
         }
 
         val base64Image = bitmap.toBase64()
@@ -155,7 +169,41 @@ object GeminiClient {
                 Result.failure(Exception("Could not analyze food image"))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            val msg = when {
+                e.message?.contains("403") == true -> "API key unauthorized or quota exceeded."
+                else -> e.message ?: "Could not analyze food image"
+            }
+            Result.failure(Exception(msg, e))
+        }
+    }
+
+    suspend fun testApiKey(apiKey: String): Result<String> = withContext(Dispatchers.IO) {
+        val trimmed = apiKey.trim()
+        if (trimmed.isBlank() || trimmed == "MY_GEMINI_API_KEY") {
+            return@withContext Result.failure(Exception("Key cannot be empty or placeholder"))
+        }
+
+        val request = GeminiRequest(
+            contents = listOf(GeminiContent(parts = listOf(GeminiPart(text = "Respond with: OK")))),
+            generationConfig = GeminiGenerationConfig(temperature = 0.1f)
+        )
+
+        try {
+            val response = api.generateContent(trimmed, request)
+            val text = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
+            if (!text.isNullOrBlank()) {
+                Result.success("Connection verified successfully! Gemini is active.")
+            } else {
+                Result.failure(Exception("Received empty response from Gemini."))
+            }
+        } catch (e: Exception) {
+            val msg = when {
+                e.message?.contains("400") == true -> "Invalid API key format."
+                e.message?.contains("403") == true -> "API key unauthorized or quota exceeded. Please check your key."
+                e.message?.contains("404") == true -> "Model endpoint unavailable."
+                else -> e.message ?: "Connection test failed."
+            }
+            Result.failure(Exception(msg, e))
         }
     }
 

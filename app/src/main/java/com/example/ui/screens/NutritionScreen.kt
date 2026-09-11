@@ -24,6 +24,7 @@ import com.example.data.MealLog
 import com.example.data.PrepopulatedData
 import com.example.ui.components.AiFoodScannerSheet
 import com.example.ui.components.FoodSearchAndLogDialog
+import com.example.ui.components.GeminiApiKeyDialog
 import com.example.ui.components.MacroSummaryCard
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.FitnessViewModel
@@ -43,6 +44,14 @@ fun NutritionScreen(viewModel: FitnessViewModel) {
 
     var activeMealDialogType by remember { mutableStateOf<String?>(null) }
     var showAiScannerSheet by remember { mutableStateOf(false) }
+    var showApiKeyDialog by remember { mutableStateOf(false) }
+
+    if (showApiKeyDialog) {
+        GeminiApiKeyDialog(
+            viewModel = viewModel,
+            onDismiss = { showApiKeyDialog = false }
+        )
+    }
 
     val user = userProfile ?: PrepopulatedData.defaultProfile
 
@@ -230,6 +239,9 @@ fun NutritionScreen(viewModel: FitnessViewModel) {
                 viewModel.logMeal(targetMeal, food, food.servingSize, food.servingUnit)
                 viewModel.clearScannedResult()
                 showAiScannerSheet = false
+            },
+            onOpenApiKeySettings = {
+                showApiKeyDialog = true
             },
             onDismiss = {
                 showAiScannerSheet = false

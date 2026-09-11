@@ -31,6 +31,22 @@ class FitnessViewModel(application: Application) : AndroidViewModel(application)
     private val db = FitPulseDatabase.getDatabase(application, viewModelScope)
     private val repository = FitPulseRepository(db.dao())
     val voiceCoach = VoiceCoachManager(application)
+    val apiKeyManager = ApiKeyManager.getInstance(application)
+
+    val customGeminiApiKey: StateFlow<String> = apiKeyManager.customKey
+    val hasActiveGeminiKey: StateFlow<Boolean> = apiKeyManager.hasActiveKey
+
+    fun saveGeminiApiKey(key: String) {
+        apiKeyManager.saveCustomKey(key)
+    }
+
+    fun clearGeminiApiKey() {
+        apiKeyManager.clearCustomKey()
+    }
+
+    suspend fun testGeminiApiKey(key: String): Result<String> {
+        return GeminiClient.testApiKey(key)
+    }
 
     private val moshi = Moshi.Builder().build()
     private val routineExercisesType = Types.newParameterizedType(List::class.java, RoutineExercise::class.java)
@@ -291,10 +307,11 @@ class FitnessViewModel(application: Application) : AndroidViewModel(application)
                 }
             """.trimIndent()
 
+            val activeKey = apiKeyManager.getActiveKey()
             val result = if (bitmap != null) {
-                GeminiClient.analyzeImage(bitmap, prompt)
+                GeminiClient.analyzeImage(bitmap, prompt, activeKey)
             } else {
-                GeminiClient.generateText(prompt, "You are an expert sports nutritionist and nutrition analyzer. Output strictly valid JSON.")
+                GeminiClient.generateText(prompt, "You are an expert sports nutritionist and nutrition analyzer. Output strictly valid JSON.", activeKey)
             }
 
             result.onSuccess { rawResponse ->
@@ -597,7 +614,12 @@ class FitnessViewModel(application: Application) : AndroidViewModel(application)
                 ]
             """.trimIndent()
 
-            val result = GeminiClient.generateText(prompt, "You are a world-class registered dietitian, sports nutritionist, and culinary chef. Return strictly valid JSON array.")
+            val activeKey = apiKeyManager.getActiveKey()
+            val result = GeminiClient.generateText(
+                prompt,
+                "You are a world-class registered dietitian, sports nutritionist, and culinary chef. Return strictly valid JSON array.",
+                activeKey
+            )
 
             result.onSuccess { rawResponse ->
                 try {
@@ -665,7 +687,19 @@ class FitnessViewModel(application: Application) : AndroidViewModel(application)
                 Respond in an energetic, knowledgeable, scientifically grounded, and motivating tone. Give concise, actionable bullet points when appropriate.
             """.trimIndent()
 
-            val result = GeminiClient.generateText(userText, systemInstruction)
+            val activeKey = apiKeyManager.getActiveKey()
+            if (activeKey.isBlank()) {
+                repository.addChatMessage(
+                    ChatMessage(
+                        role = "coach",
+                        content = "Hey! To chat with me, a Google Gemini API key is required. Tap the key icon 🔑 at the top of the screen to paste your personal free key from Google AI Studio!"
+                    )
+                )
+                _isCoachThinking.value = false
+                return@launch
+            }
+
+            val result = GeminiClient.generateText(userText, systemInstruction, activeKey)
 
             result.onSuccess { responseText ->
                 repository.addChatMessage(ChatMessage(role = "coach", content = responseText))

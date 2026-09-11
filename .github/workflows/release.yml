@@ -105,7 +105,11 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
           # Inject .env for Secrets Gradle plugin
-          echo "GEMINI_API_KEY=${GEMINI_API_KEY:-""}" > .env
+          if [ -n "$GEMINI_API_KEY" ]; then
+            echo "GEMINI_API_KEY=$GEMINI_API_KEY" > .env
+          else
+            echo "GEMINI_API_KEY=MY_GEMINI_API_KEY" > .env
+          fi
           
           # If a custom upload keystore is supplied in GitHub Secrets, decode it
           if [ -n "$KEYSTORE_BASE64" ]; then

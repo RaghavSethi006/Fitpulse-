@@ -1,5 +1,15 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
 
+// Ensure .env has valid non-empty values so Secrets Gradle Plugin never generates invalid Java syntax in BuildConfig
+val rootEnvFile = rootProject.file(".env")
+if (rootEnvFile.exists()) {
+  val envText = rootEnvFile.readText()
+  val sanitizedText = envText.replace(Regex("""(?m)^GEMINI_API_KEY=\s*["']?\s*["']?\s*$"""), "GEMINI_API_KEY=MY_GEMINI_API_KEY")
+  if (sanitizedText != envText) {
+    rootEnvFile.writeText(sanitizedText)
+  }
+}
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)

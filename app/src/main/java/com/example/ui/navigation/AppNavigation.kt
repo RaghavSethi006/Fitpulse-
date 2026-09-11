@@ -183,6 +183,7 @@ fun FitPulseMainApp(viewModel: FitnessViewModel) {
     if (showProfileDialog) {
         UserProfileDialog(
             currentProfile = userProfile ?: PrepopulatedData.defaultProfile,
+            viewModel = viewModel,
             onSaveProfile = { updated ->
                 viewModel.updateProfile(updated)
                 showProfileDialog = false

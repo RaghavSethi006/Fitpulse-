@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.ChatMessage
 import com.example.data.PrepopulatedData
+import com.example.ui.components.GeminiApiKeyDialog
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.FitnessViewModel
 
@@ -35,10 +36,19 @@ fun AiCoachScreen(viewModel: FitnessViewModel) {
     val isThinking by viewModel.isCoachThinking.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
     val todayLogs by viewModel.todayMealLogs.collectAsState()
+    val hasActiveKey by viewModel.hasActiveGeminiKey.collectAsState()
 
     val user = userProfile ?: PrepopulatedData.defaultProfile
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+    var showApiKeyDialog by remember { mutableStateOf(false) }
+
+    if (showApiKeyDialog) {
+        GeminiApiKeyDialog(
+            viewModel = viewModel,
+            onDismiss = { showApiKeyDialog = false }
+        )
+    }
 
     val quickQuestions = listOf(
         "How do I break through a bench press plateau?",
@@ -104,8 +114,66 @@ fun AiCoachScreen(viewModel: FitnessViewModel) {
                 }
             }
 
-            IconButton(onClick = { viewModel.clearCoachChat() }) {
-                Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = "Clear Chat", tint = SlateTextSecondary)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = { showApiKeyDialog = true },
+                    modifier = Modifier.testTag("ai_coach_api_key_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.VpnKey,
+                        contentDescription = "Configure Gemini API Key",
+                        tint = if (hasActiveKey) GreenAccent else EnergeticOrange
+                    )
+                }
+
+                IconButton(onClick = { viewModel.clearCoachChat() }) {
+                    Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = "Clear Chat", tint = SlateTextSecondary)
+                }
+            }
+        }
+
+        if (!hasActiveKey) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = EnergeticOrange.copy(alpha = 0.12f)),
+                border = BorderStroke(1.dp, EnergeticOrange.copy(alpha = 0.35f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showApiKeyDialog = true }
+                    .testTag("api_key_missing_banner")
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Key,
+                        contentDescription = null,
+                        tint = EnergeticOrange,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Add Your Gemini API Key",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = EnergeticOrange
+                        )
+                        Text(
+                            text = "Tap to enter your free key from Google AI Studio and chat with Coach Alex.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SlateTextSecondary
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = EnergeticOrange,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
 

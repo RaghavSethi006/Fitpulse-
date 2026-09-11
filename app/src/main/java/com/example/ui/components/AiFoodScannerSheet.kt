@@ -33,6 +33,7 @@ fun AiFoodScannerSheet(
     scanError: String?,
     onScanRequest: (Bitmap?, String?) -> Unit,
     onConfirmLogScannedFood: (FoodItem, String) -> Unit,
+    onOpenApiKeySettings: (() -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     var textQuery by remember { mutableStateOf("") }
@@ -88,8 +89,22 @@ fun AiFoodScannerSheet(
                     }
                 }
 
-                IconButton(onClick = onDismiss) {
-                    Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = SlateTextSecondary)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (onOpenApiKeySettings != null) {
+                        IconButton(
+                            onClick = onOpenApiKeySettings,
+                            modifier = Modifier.testTag("scanner_api_key_header_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.VpnKey,
+                                contentDescription = "Configure API Key",
+                                tint = BlueLight
+                            )
+                        }
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = SlateTextSecondary)
+                    }
                 }
             }
 
@@ -180,12 +195,28 @@ fun AiFoodScannerSheet(
                     border = BorderStroke(1.dp, Color(0x66EF4444)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = err,
-                        color = Color(0xFFFCA5A5),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(12.dp)
-                    )
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = err,
+                            color = Color(0xFFFCA5A5),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        if (onOpenApiKeySettings != null && (err.contains("key", ignoreCase = true) || err.contains("configure", ignoreCase = true) || err.contains("unauthorized", ignoreCase = true))) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = onOpenApiKeySettings,
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, BlueLight.copy(alpha = 0.5f)),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = BlueLight),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                modifier = Modifier.testTag("scanner_open_api_key_button")
+                            ) {
+                                Icon(Icons.Default.VpnKey, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Configure Gemini API Key", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
                 }
             }
 
